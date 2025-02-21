@@ -1,0 +1,594 @@
+---
+title: "Diet Analysis"
+output: pdf_document
+date: "2025-01-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, include = FALSE)
+```
+
+```{r imports}
+library(tidyverse)
+library(patchwork)
+```
+
+## Diet Analysis
+
+### Variables description
+
+This study is based on a dataset of 100 participants, focusing on demographics, dietary habits, physical activity levels, and lifestyle factors to predict weight change over time. The dataset includes variables categorized into Demographical, Behavioral, Medical, and Other types. The dataset aims to analyze how these variables interact and influence weight fluctuations, providing a valuable resource for researchers and practitioners in nutrition and health.
+
+| **Category**      | **Variable**                | **Description**                                                                                     | **Type**           |
+|--------------------------|--------------------------------|-----------------------------------------------------------------------------------------|--------------------|
+| **Demographical** | Participant ID             | Unique identifier for each participant                                                            | Identifier   |
+|                    | Age                        | Age of the participant (in years)                       | Numerical          |
+|                    | Gender                     | Gender of the participant (M/F)                                                                | Categorical  |
+| **Behavioral**     | Daily Calories Consumed    | Total caloric intake per day                                     | Numerical          |
+|                    | Daily Caloric Surplus/Deficit | Difference between calories consumed and BMR                         | Numerical          |
+|                    | Physical Activity Level    | Self-reported activity level         | Categorical        |
+|                    | Sleep Quality              | Self-reported sleep quality                                      | Categorical        |
+|                    | Stress Level               | Perceived stress level, scored on a scale from 1 to 10                                             | Numerical          |
+| **Medical**        | Current Weight       | Participant's weight (lbs) at the start of the study                                                    | Numerical          |
+|                    | BMR            | Basal Metabolic Rate, number of calories burned at rest                                  | Numerical          |
+|                    | Weight Change       | Estimated change in weight (lbs) based on caloric surplus/deficit                                       | Numerical          |
+|                    | Final Weight        | Participant's weight (lbs) at the end of the study                                                      | Numerical          |
+| **Other**          | Duration         | Time period for weight change measurement (weeks)                                            | Numerical          |
+
+### Exploratory data analysis
+
+1) Detect possible outliers in the variables. In particular consider the target variable Change of Weight. Decide whether to keep or remove outliers.
+
+```{r load_dataframe}
+heart_dis <- read_csv('data/dataset.csv')
+heart_dis
+```
+#### Demographical variables and others
+
+```{r exploratory_data_analysis_demographical_box_plot"}
+age_boxplot <- ggplot(data = heart_dis, aes(x = "", y = Age)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Age Distribution", x = "", y = "Age") +
+  theme_minimal()
+```
+
+```{r exploratory_data_analysis_demographical, include = TRUE, fig.width = 8, fig.height = 4, out.width = "90%", fig.align = "center"}
+age_plot <- ggplot(data = heart_dis, aes(x = Age)) + 
+  geom_histogram(binwidth = 5, fill = "blue", color = "black") +
+  labs(title = "Age Distribution", x = "Age", y = "Count")
+
+gender_plot <- ggplot(data = heart_dis) +
+  geom_bar(mapping = aes(x = Gender), fill = "blue", color = "black") + 
+  scale_x_discrete(labels = c("M" = "Male", "F" = "Female")) +
+  labs(title = "Gender Distribution", x = "Gender", y = "Count")
+
+weeks_plot <- ggplot(data = heart_dis, aes(x = `Duration (weeks)`)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Duration Distribution", x = "Duration (weeks)", y = "Count")
+
+age_plot + age_boxplot + gender_plot + weeks_plot
+```
+
+There are no outliers in the age distribution.
+
+#### Medical variables
+
+```{r exploratory_data_analysis_medical, include = TRUE, fig.width = 12, fig.height = 6, out.width = "90%", fig.align = "center"}
+current_weight_plot <- ggplot(data = heart_dis, aes(x = `Current Weight (lbs)`)) + 
+  geom_histogram(binwidth = 10, fill = "blue", color = "black") +
+  labs(title = "Current Weight Distribution", x = "Current Weight (lbs)", y = "Count")
+
+final_weight_plot <- ggplot(data = heart_dis, aes(x = `Final Weight (lbs)`)) + 
+  geom_histogram(binwidth = 10, fill = "blue", color = "black") +
+  labs(title = "Final Weight Distribution", x = "Final Weight (lbs)", y = "Count")
+
+weight_change_plot <- ggplot(data = heart_dis, aes(x = `Weight Change (lbs)`)) + 
+  geom_histogram(binwidth = 5, fill = "blue", color = "black") +
+  labs(title = "Weight Change Distribution", x = "Weight Change (lbs)", y = "Count")
+
+bmr_plot <- ggplot(data = heart_dis, aes(x = `BMR (Calories)`)) + 
+  geom_histogram(binwidth = 250, fill = "blue", color = "black") +
+  labs(title = "BMR Distribution", x = "Basal Metabolic Rate (Calories)", y = "Count")
+
+current_weight_plot + final_weight_plot + weight_change_plot + bmr_plot
+```
+The distribution of weight change exhibits skewness.
+
+```{r exploratory_data_analysis_medical_box_plot, include = TRUE, fig.width = 9, fig.height = 6, out.width = "90%", fig.align = "center"}
+
+current_weight_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `Current Weight (lbs)`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Current Weight Distribution", x = "", y = "Current Weight (lbs)") +
+  theme_minimal()
+
+final_weight_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `Final Weight (lbs)`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Final Weight Distribution", x = "", y = "Final Weight (lbs)") +
+  theme_minimal()
+
+weight_change_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `Weight Change (lbs)`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Weight Change Distribution", x = "", y = "Weight Change (lbs)") +
+  theme_minimal()
+
+bmr_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `BMR (Calories)`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "BMR Distribution", x = "", y = "Basal Metabolic Rate (Calories)") +
+  theme_minimal()
+
+current_weight_boxplot + final_weight_boxplot + weight_change_boxplot + bmr_boxplot
+```
+Potential outliers are observed in the weight change data.
+
+```{r outliers_weight}
+filtered_data <- heart_dis[heart_dis['Weight Change (lbs)'] < -15, ]
+filtered_data
+```
+Observing that the outlier participants exhibit durations of 8 weeks or longer, we will investigate whether normalizing the data by calculating weight change per week improves the distribution.
+
+
+```{r add_weight_change_per_week, include = TRUE, fig.width = 8, fig.height = 3, out.width = "90%", fig.align = "center"}
+heart_dis$`Weight Change Per Week (lbs)` <- heart_dis$`Weight Change (lbs)` / heart_dis$`Duration (weeks)`
+
+weight_change_plot <- ggplot(data = heart_dis, aes(x = `Weight Change Per Week (lbs)`)) + 
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black") +
+  labs(title = "Weight Change Per Week Distribution", x = "Weight Change Per Week (lbs)", y = "Count")
+
+weight_change_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `Weight Change Per Week (lbs)`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Weight Change Per Week Distribution", x = "", y = "Weight Change Per Week (lbs)") +
+  theme_minimal()
+
+weight_change_plot + weight_change_boxplot
+```
+
+
+```{r outliers_weight_per_week}
+filtered_data <- heart_dis[heart_dis['Weight Change Per Week (lbs)'] < -2.6, ]
+filtered_data
+```
+After examining the outliers, we determined that they do not require removal. These data points represent two men aged 35 and 40 who are achieving a weight loss of 3 pounds per week through moderate activity. Given their starting weight and the observed results, these data points appear valid and were retained in the analysis. Furthermore, considering the relatively small sample size of 100 participants, we decided to preserve these data points to maintain the integrity of our analysis.
+
+#### Behavioural variables
+
+```{r exploratory_data_analysis_behavioural, include = TRUE, fig.width = 12, fig.height = 6, out.width = "90%", fig.align = "center"}
+calory_consumed_plot <- ggplot(data = heart_dis, aes(x = `Daily Calories Consumed`)) + 
+  geom_histogram(binwidth = 250, fill = "blue", color = "black") +
+  labs(title = "Daily Calories Consumed Distribution", x = "Daily Calories Consumed", y = "Count")
+
+calory_surplus_plot <- ggplot(data = heart_dis, aes(x = `Daily Caloric Surplus/Deficit`)) + 
+  geom_histogram(binwidth = 250, fill = "blue", color = "black") +
+  labs(title = "Daily Caloric Surplus/Deficit Distribution", x = "Daily Caloric Surplus/Deficit", y = "Count")
+
+physical_activity_plot <- ggplot(data = heart_dis) +
+  geom_bar(mapping = aes(x = `Physical Activity Level`), fill = "blue", color = "black") + 
+  scale_x_discrete(labels = c("Lightly Active" = "L", "Very Active" = "A", "Moderately Active" = "M", "Sedentary" = "S")) +
+  labs(title = "Physical Activity Level Distribution", x = "Physical Activity Level", y = "Count")
+
+sleep_quality_plot <- ggplot(data = heart_dis) +
+  geom_bar(mapping = aes(x = `Sleep Quality`), fill = "blue", color = "black") + 
+  labs(title = "Sleep Quality Distribution", x = "Sleep Quality", y = "Count")
+
+stress_level_plot <- ggplot(data = heart_dis, aes(x = `Stress Level`)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Stress Level Distribution", x = "Stress Level", y = "Count")
+
+calory_consumed_plot + calory_surplus_plot + physical_activity_plot + sleep_quality_plot + stress_level_plot
+```
+
+```{r exploratory_data_analysis_behavioural_boxplot, include = TRUE, fig.width = 10, fig.height = 3, out.width = "90%", fig.align = "center"}
+calory_consumed_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `Daily Calories Consumed`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Daily Calories Consumed Distribution", x = "", y = "Daily Calories Consumed")
+
+calory_surplus_boxplot <- ggplot(data = heart_dis, aes(x = "", y = `Daily Caloric Surplus/Deficit`)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Daily Caloric Surplus/Deficit Distribution", x = "", y = "Daily Caloric Surplus/Deficit")
+
+calory_consumed_boxplot + calory_surplus_boxplot
+```
+The distribution of daily calorie consumption exhibits skewness, with a single outlier observed.
+
+```{r outliers_calories}
+filtered_data <- heart_dis[heart_dis['Daily Calories Consumed'] < 2100, ]
+filtered_data
+```
+This participant initially appeared to be an outlier due to her reported daily calorie intake being lower than expected compared to the other participants. However, upon further consideration, her reported low level of physical activity suggests that her low calorie intake may not be erroneous. It's possible that this individual has a lower energy expenditure than average, perhaps due to factors such as age, level of activity and sleep quality. Therefore, we have decided to retain this data point in the analysis.
+
+### Bivariate Analysis
+2) Consider variables Gender, Sleep of Quality and Physical Activity. Do these variable affect the change of weight of the patients? Which categories are more influential?
+
+
+```{r bivariate_analysis_1, include = TRUE, echo=FALSE, fig.width = 12, fig.height = 12, out.width = "90%", fig.align = "center"}
+library(GGally)
+
+GGally::ggpairs(heart_dis, columns = c("Weight Change (lbs)", "Gender", "Sleep Quality", "Physical Activity Level"))
+```
+From this plot it seems that a poor sleep quality changes the weight change. To assess this we perform an ANOVA (Analysis of Variance), which is a statistical method used to compare the means of three or more groups.
+
+```{r bivariate_analysis_2}
+library(dplyr) 
+library(stats)
+library(data.table)
+
+# Changing the name of the columns
+setnames(heart_dis, "Weight Change (lbs)", "Weight.Change", skip_absent=TRUE)
+setnames(heart_dis, "Sleep Quality", "Sleep.Quality", skip_absent=TRUE)
+
+# Perform ANOVA
+anova_result <- aov(Weight.Change ~ Sleep.Quality, data = heart_dis) 
+
+# Print the results
+print(anova_result) 
+```
+```{r bivariate_analysis_3, include = TRUE, echo=FALSE, fig.width = 8, fig.height = 4, out.width = "90%", fig.align = "center"}
+library(car)
+par(mfrow = c(1, 2)) # combine plots
+
+# histogram
+hist(anova_result$residuals)
+
+# QQ-plot
+
+qqPlot(anova_result$residuals,
+  id = FALSE # id = FALSE to remove point identification
+)
+```
+
+```{r bivariate_analysis_4, include = T}
+shapiro.test(anova_result$residuals)
+```
+The Shapiro test on the ANOVA residuals confirms the previously observed skewness in the weight change distribution. To assess the hypothesis that poor sleep quality impacts weight change, we will employ the Kruskal-Wallis test, a non-parametric alternative to ANOVA.
+
+```{r bivariate_analysis_5, include = TRUE}
+# Perform Kruskal-Wallis test
+kruskal.test(Weight.Change ~ Sleep.Quality, data = heart_dis)
+```
+The Kruskal-Wallis test revealed a significant difference between groups. However, this test does not identify which specific groups differ. To pinpoint these differences, we will perform the Dunn's post-hoc test.
+
+
+```{r bivariate_analysis_6}
+library(FSA)
+
+dunnTest(Weight.Change ~ Sleep.Quality,
+  data = heart_dis,
+  method = "holm"
+)
+```
+Significant differences were found between:  
+- Excellent and Poor sleep quality ($p_{adj}$ = 2.79e-6)  
+- Fair and Poor sleep quality ($p_{adj}$ = 4.01e-07)  
+- Good and Poor sleep quality ($p_{adj}$ = 1.8e-08)  
+
+
+```{r bivariate_analysis_7, include = TRUE, fig.width = 12, fig.height = 12, out.width = "90%", fig.align = "center"}
+
+GGally::ggpairs(heart_dis, columns = c("Weight Change Per Week (lbs)", "Gender", "Sleep.Quality", "Physical Activity Level"))
+```
+
+By reproducing the same analysis considering the weight change per week, we obtain the same results.
+
+```{r bivariate_analysis_8}
+setnames(heart_dis, "Weight Change Per Week (lbs)", "Weight.Change.Per.Week", skip_absent=TRUE)
+
+# Perform Kruskal-Wallis test
+kruskal.test(Weight.Change.Per.Week ~ Sleep.Quality, data = heart_dis)
+```
+
+
+```{r bivariate_analysis_9}
+dunnTest(Weight.Change.Per.Week ~ Sleep.Quality,
+  data = heart_dis,
+  method = "holm"
+)
+```
+The Dunn's post-hoc test gives significant differences between:  
+- Excellent and Poor sleep quality ($p_{adj}$ = 2.77e-7)  
+- Fair and Poor sleep quality ($p_{adj}$ = 2.80e-07)  
+- Good and Poor sleep quality ($p_{adj}$ = 1.69e-06)  
+
+
+```{r bivariate_analysis_10}
+setnames(heart_dis, "Physical Activity Level", "Physical.Activity.Level", skip_absent=TRUE)
+
+# Perform Kruskal-Wallis test
+kruskal.test(Weight.Change ~ Gender, data = heart_dis)
+kruskal.test(Weight.Change.Per.Week ~ Gender, data = heart_dis)
+kruskal.test(Weight.Change ~ Physical.Activity.Level, data = heart_dis)
+kruskal.test(Weight.Change.Per.Week ~ Physical.Activity.Level, data = heart_dis)
+```
+No significant difference was found using the Kruskal-Wallis test for the gender and the physical activity level for both the weight change and the weight change per week.
+
+### Linear Regression Analysis
+
+```{r regression_analysis_1}
+model <- lm(Weight.Change ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+
+# Summarize the model
+summary(model)
+```
+As expected from the previous analysis, the only variable giving a significant p-value is the sleep quality (in this case the poor because the sleep quality excellent was the basic level), with a coefficient of -9.7.
+
+```{r regression_analysis_1.1, include = TRUE, fig.width = 5, fig.height = 3, out.width = "90%", fig.align = "center"}
+# histogram
+hist_plot <- hist(model$residuals)
+
+# QQ-plot
+
+qq_plot <- qqPlot(model$residuals,
+  id = FALSE # id = FALSE to remove point identification
+)
+
+residues_plot <- plot(model$fitted.values, model$residuals,
+     main = "Scatter Plot of Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     col = "blue", pch = 16)
+abline(h = 0, col = "red", lwd = 2)  # Add a horizontal line at 0
+```
+It seems that there is heteroscedasticity and also violation of normality. This will be assessed in the regression analysis.
+
+
+```{r regression_analysis_2}
+# If we do a re-level
+heart_dis$Sleep.Quality <- as.factor(heart_dis$Sleep.Quality) 
+heart_dis$Sleep.Quality <- relevel(heart_dis$Sleep.Quality, ref = "Poor") 
+
+model <- lm(Weight.Change ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+
+# Summarize the model
+summary(model)
+```
+As expected, when using 'Poor' sleep quality as the reference level, 'Fair', 'Excellent', and 'Good' sleep quality categories were found to be statistically significant, all with positive coefficients of more than 9.
+
+
+```{r regression_analysis_3}
+model <- lm(Weight.Change.Per.Week ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+
+# Summarize the model
+summary(model)
+```
+```{r regression_analysis_3.1, include = TRUE, fig.width = 5, fig.height = 3, out.width = "90%", fig.align = "center"}
+# histogram
+hist(model$residuals)
+
+# QQ-plot
+
+qqPlot(model$residuals,
+  id = FALSE # id = FALSE to remove point identification
+)
+
+plot(model$fitted.values, model$residuals,
+     main = "Scatter Plot of Residuals vs Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     col = "blue", pch = 16)
+abline(h = 0, col = "red", lwd = 2)  # Add a horizontal line at 0
+```
+It seems that there is heteroscedasticity and also violation of the normality. This will be assessed in the regression analysis.
+
+```{r regression_analysis_4}
+heart_dis$Sleep.Quality <- relevel(heart_dis$Sleep.Quality, ref = "Excellent") 
+model <- lm(Weight.Change.Per.Week ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+
+# Summarize the model
+summary(model)
+```
+
+The significant variables do not change even when we consider the weight change per week as the dependent variable. When the reference level is excellent, we have that a poor sleep quality is significant with a coefficient of -1.44, while when the reference level is poor quality of sleep, then excellent, fair and good are significant with positive coefficients.
+
+##### Summary  
+Sleep Quality:  
+- Significant Effect: sleep quality significantly impacts weight change.  
+- Kruskal-Wallis Test: the Kruskal-Wallis test revealed significant differences in weight change across different sleep quality groups.  
+- Post-hoc Tests: Dunn's post-hoc tests identified significant differences between "Poor" sleep quality and "Excellent," "Fair," and "Good" sleep quality groups.  
+- Regression Analysis: The regression model confirmed the significance of sleep quality, with "Poor" sleep quality showing a significant negative association with weight change when "Excellent" sleep quality was used as the reference.  
+
+Gender and Physical Activity:  
+- No Significant Effect: the analysis did not find significant effects of gender or physical activity level on weight change (or weight change per week).
+
+#### Interaction effects  
+
+```{r interaction_effects_1}
+model_interaction <- lm(Weight.Change ~ Gender * Sleep.Quality, data = heart_dis)
+
+summary(model_interaction) 
+```
+
+
+```{r interaction_effects_2}
+model_interaction <- lm(Weight.Change ~ Physical.Activity.Level * Sleep.Quality, data = heart_dis)
+
+summary(model_interaction) 
+```
+
+```{r interaction_effects_3}
+model_interaction <- lm(Weight.Change ~ Physical.Activity.Level * Gender, data = heart_dis)
+
+summary(model_interaction) 
+```
+Even after considering potential interactions between gender, sleep quality, and physical activity, only sleep quality demonstrated a statistically significant association with weight change.
+
+```{r interaction_effects_4}
+model_interaction <- lm(Weight.Change.Per.Week ~ Gender * Sleep.Quality, data = heart_dis)
+
+summary(model_interaction) 
+```
+```{r interaction_effects_5}
+model_interaction <- lm(Weight.Change.Per.Week ~ Physical.Activity.Level * Sleep.Quality, data = heart_dis)
+
+summary(model_interaction) 
+```
+
+```{r interaction_effects_6}
+model_interaction <- lm(Weight.Change.Per.Week ~ Physical.Activity.Level * Gender, data = heart_dis)
+
+summary(model_interaction) 
+```
+The same is true if we consider the weight change per week as the dependent variable.
+
+### Regression Analysis
+As seen previously, the weight change distribution is skewed. In particular, the skew value of the weight change is -2.09, while the skew value of the weight change per week is -1.
+
+```{r regression_analysis_10}
+model <- lm(Weight.Change ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+qqPlot(model_residuals,
+  id = FALSE # id = FALSE to remove point identification
+)
+
+library(e1071)
+skew_value <- skewness(model_residuals)
+skew_value
+```
+```{r regression_analysis_11}
+model <- lm(Weight.Change.Per.Week ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+qqPlot(model_residuals,
+  id = FALSE # id = FALSE to remove point identification
+)
+
+library(e1071)
+skew_value <- skewness(model_residuals)
+skew_value
+```
+
+
+```{r regression_analysis_12}
+library(caret)
+
+log_transform <- function(x) {
+  # Shift the data to be positive
+  shift_value <- abs(min(x)) + 0.1
+  return(log(x + shift_value))
+}
+
+heart_dis$Weight.Change.Log <- log_transform(heart_dis$Weight.Change)
+
+sqrt_transform <- function(x) {
+  # Shift the data to be positive
+  shift_value <- abs(min(x)) + 0.1
+  return(sqrt(x + shift_value))
+}
+
+heart_dis$Weight.Change.Sqrt <- sqrt_transform(heart_dis$Weight.Change)
+
+inverse_transform <- function(x) {
+  # Shift the data to ensure positivity and avoid division by very small numbers
+  shift_value <- abs(min(x, na.rm = TRUE)) + 200
+  return(1 / (x + shift_value))
+}
+
+heart_dis$Weight.Change.Inverse <- inverse_transform(heart_dis$Weight.Change)
+
+boxcox_transform <- function(x) {
+  # Shift the data to be positive
+  shift_value <- abs(min(x)) + 1
+  # Apply Box-Cox
+  bc <- BoxCoxTrans(x + shift_value)
+  return(predict(bc, x + shift_value))
+}
+
+heart_dis$Weight.Change.Boxcox <- boxcox_transform(heart_dis$Weight.Change)
+
+weight_change_plot_log <- ggplot(data = heart_dis, aes(x = Weight.Change.Log)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Weight Change Log Distribution", x = "Weight Change Log", y = "Count")
+
+weight_change_boxplot_log <- ggplot(data = heart_dis, aes(x = "", y = Weight.Change.Log)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Weight Change Log Distribution", x = "", y = "Weight Change Log") +
+  theme_minimal()
+
+weight_change_plot_sqrt <- ggplot(data = heart_dis, aes(x = Weight.Change.Sqrt)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Weight Change Sqrt Distribution", x = "Weight Change Sqrt", y = "Count")
+
+weight_change_boxplot_sqrt <- ggplot(data = heart_dis, aes(x = "", y = Weight.Change.Sqrt)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Weight Change Sqrt Distribution", x = "", y = "Weight Change Sqrt") +
+  theme_minimal()
+
+weight_change_plot_inverse <- ggplot(data = heart_dis, aes(x = Weight.Change.Inverse)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Weight Change Inverse Distribution", x = "Weight Change Inverse", y = "Count")
+
+weight_change_boxplot_inverse <- ggplot(data = heart_dis, aes(x = "", y = Weight.Change.Inverse)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Weight Change Inverse Distribution", x = "", y = "Weight Change Inverse") +
+  theme_minimal()
+
+weight_change_plot_boxcox <- ggplot(data = heart_dis, aes(x = Weight.Change.Boxcox)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Weight Change Boxcox Distribution", x = "Weight Change Boxcox", y = "Count")
+
+weight_change_boxplot_boxcox <- ggplot(data = heart_dis, aes(x = "", y = Weight.Change.Boxcox)) + 
+  geom_boxplot(fill = "blue", color = "black") +
+  labs(title = "Weight Change Boxcox Distribution", x = "", y = "Weight Change Boxcox") +
+  theme_minimal()
+```
+
+```{r regression_analysis_13}
+# weight_change_plot_log + weight_change_boxplot_log + weight_change_plot_sqrt + weight_change_boxplot_sqrt
+```
+
+
+```{r regression_analysis_14}
+# weight_change_plot_inverse + weight_change_boxplot_inverse + weight_change_plot_boxcox + weight_change_boxplot_boxcox
+```
+
+
+```{r regression_analysis_15}
+print('Log')
+model <- lm(Weight.Change.Log ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+
+print('Sqrt')
+model <- lm(Weight.Change.Sqrt ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+
+print('Inverse')
+model <- lm(Weight.Change.Inverse ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+
+print('Boxcox')
+model <- lm(Weight.Change.Boxcox ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+```
+
+```{r regression_analysis_16}
+
+heart_dis$Weight.Change.Per.Week.Log <- log_transform(heart_dis$Weight.Change.Per.Week)
+heart_dis$Weight.Change.Per.Week.Sqrt <- sqrt_transform(heart_dis$Weight.Change.Per.Week)
+heart_dis$Weight.Change.Per.Week.Inverse <- inverse_transform(heart_dis$Weight.Change.Per.Week)
+heart_dis$Weight.Change.Per.Week.Boxcox <- boxcox_transform(heart_dis$Weight.Change.Per.Week)
+
+print('Log')
+model <- lm(Weight.Change.Per.Week.Log ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+
+print('Sqrt')
+model <- lm(Weight.Change.Per.Week.Sqrt ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+
+print('Inverse')
+model <- lm(Weight.Change.Per.Week.Inverse ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+
+print('Boxcox')
+model <- lm(Weight.Change.Per.Week.Boxcox ~ Gender + Sleep.Quality + Physical.Activity.Level, data = heart_dis) 
+model_residuals <- residuals(model)
+skewness(model_residuals)
+```
+
+
+### Based on data, provide a predictive model for the changeofweight.
+
+3) Based on data, provide a predictive model for the change of weight.
